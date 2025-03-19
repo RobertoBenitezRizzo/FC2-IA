@@ -1,0 +1,45 @@
+using UnityEngine;
+
+public class CameraFollow : MonoBehaviour
+{
+    public Transform target;
+    public Vector3 offset = new Vector3(0, 10, -10);
+    public float smoothSpeed = 0.125f;
+    public float rotationSpeed = 5f;
+    public float zoomSpeed = 2f;
+
+    void LateUpdate()
+    {
+        if (target == null) return;
+
+        // Rotación con Q/E
+        if (Input.GetKey(KeyCode.Q))
+            offset = Quaternion.Euler(0, -rotationSpeed, 0) * offset;
+        if (Input.GetKey(KeyCode.E))
+            offset = Quaternion.Euler(0, rotationSpeed, 0) * offset;
+
+        // Zoom con la rueda del mouse
+        float scroll = Input.GetAxis("Mouse ScrollWheel");
+        offset.y -= scroll * zoomSpeed;
+        offset.z += scroll * zoomSpeed;
+
+        // Actualizar posición de la cámara
+        Vector3 desiredPosition = target.position + offset;
+        Vector3 smoothedPosition = Vector3.Lerp(transform.position, desiredPosition, smoothSpeed);
+        transform.position = smoothedPosition;
+
+        // Hacer que la cámara mire al robot
+        transform.LookAt(target);
+
+        // Rotar el robot para mirar en dirección contraria a la cámara
+        RotateRobotToCamera();
+    }
+
+    void RotateRobotToCamera()
+    {
+        Vector3 directionToCamera = transform.position - target.position;
+        directionToCamera.y = 0; // Ignorar la altura
+        Quaternion targetRotation = Quaternion.LookRotation(-directionToCamera);
+        target.rotation = Quaternion.Slerp(target.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+    }
+}

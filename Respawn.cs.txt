@@ -1,0 +1,34 @@
+using UnityEngine;
+
+public class ItemSpawner : MonoBehaviour
+{
+    public GameObject itemPrefab;
+    public Transform spawnArea;
+    private GameObject currentItem; // Referencia al ítem actual
+
+    private void Start()
+    {
+        SpawnItem(); // Generar el primer ítem al inicio
+    }
+
+    public void SpawnItem()
+    {
+        if (currentItem == null) // Solo generar si no hay un ítem activo
+        {
+            Vector3 spawnPosition = new Vector3(
+                Random.Range(spawnArea.position.x - spawnArea.localScale.x / 2, spawnArea.position.x + spawnArea.localScale.x / 2),
+                0,
+                Random.Range(spawnArea.position.z - spawnArea.localScale.z / 2, spawnArea.position.z + spawnArea.localScale.z / 2)
+            );
+
+            currentItem = Instantiate(itemPrefab, spawnPosition, Quaternion.identity);
+        }
+    }
+
+    // Llamar este método cuando el robot entregue un ítem
+    public void OnItemDelivered()
+    {
+        currentItem = null;
+        SpawnItem(); // Generar nuevo ítem
+    }
+}

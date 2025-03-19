@@ -1,0 +1,90 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using Unity.MLAgents;
+using Unity.MLAgents.Actuators;
+using Unity.MLAgents.Sensors;
+
+public class movetogoal : Agent
+{
+    [SerializeField] private Transform firstGoal; // Primera meta
+    [SerializeField] private Transform secondGoal; // Segunda meta
+    [SerializeField] private Material winMaterial; // Para primera meta
+    [SerializeField] private Material secondGoalMaterial; // Para segunda meta
+    [SerializeField] private Material loseMaterial; // Para paredes
+    [SerializeField] private MeshRenderer floorMeshRender;
+
+    private bool reachedFirstGoal = false; // Saber si ya llegó a la primera meta
+    private Transform targetTransform; // Definir objetivo dinámico
+
+    public override void OnEpisodeBegin()
+{
+    transform.localPosition = new Vector3(-37f, -6.97f, -5.6f);
+    targetTransform = firstGoal; // Reiniciar objetivo a la primera meta
+    reachedFirstGoal = false; // Resetear estado de las metas
+
+    // 🔹 Ya NO reasignamos un material inicial, simplemente conservamos el último
+    Debug.Log($"🔄 Reinicio episodio: Manteniendo material → {floorMeshRender.sharedMaterial.name}");
+}
+
+
+    public override void CollectObservations(VectorSensor sensor)
+    {
+        sensor.AddObservation(transform.localPosition);
+        sensor.AddObservation(targetTransform.localPosition);
+    }
+
+    public override void OnActionReceived(ActionBuffers actions)
+    {
+        float movx = actions.ContinuousActions[0];
+        float movz = actions.ContinuousActions[1];
+        float moveSpeed = 7f;
+
+        transform.localPosition += new Vector3(movx, 0, movz) * Time.deltaTime * moveSpeed;
+    }
+
+    public override void Heuristic(in ActionBuffers actionsOut)
+    {
+        ActionSegment<float> continuousAction = actionsOut.ContinuousActions;
+        continuousAction[0] = Input.GetAxisRaw("Horizontal");
+        continuousAction[1] = Input.GetAxisRaw("Vertical");
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.CompareTag("Goal"))
+        {
+            if (!reachedFirstGoal)
+            {
+                // Primera meta alcanzada
+                SetReward(+1f);
+                floorMeshRender.sharedMaterial = winMaterial; // Cambia color
+                Debug.Log("✅ Llegó a la primera meta → Cambiado a: " + floorMeshRender.sharedMaterial.name);
+                
+                reachedFirstGoal = true;
+                targetTransform = secondGoal; // Ahora el objetivo es la segunda meta
+            }
+            else
+            {
+                // Segunda meta alcanzada
+                SetReward(+2f);
+                floorMeshRender.sharedMaterial = secondGoalMaterial; // Cambia color
+                Debug.Log("🏁 Llegó a la segunda meta → Cambiado a: " + floorMeshRender.sharedMaterial.name);
+
+                // 🔹 Nuevo Debugging Visual:
+                Debug.Log($"Material después de asignar: {floorMeshRender.sharedMaterial.name}");
+                Debug.Log($"Esperado: {secondGoalMaterial.name}");
+
+                EndEpisode();
+            }
+        }
+
+        if (other.CompareTag("Wall"))
+        {
+            SetReward(-1f);
+            floorMeshRender.sharedMaterial = loseMaterial;
+            Debug.Log("🚧 Chocó contra una pared → Material: " + floorMeshRender.sharedMaterial.name);
+            EndEpisode();
+        }
+    }
+}
